@@ -2064,95 +2064,60 @@ return true;
 
 function calculateTotals(){
 
+    let totals = {};
 
-let totals = {};
+    players.forEach(function(player){
+        totals[player.name] = 0;
+    });
 
+    document
+    .querySelectorAll(".score-input")
+    .forEach(function(input){
 
+        let player = input.dataset.player;
 
-players.forEach(
+        totals[player] += Number(input.value) || 0;
 
-function(player){
+    });
 
-totals[player.name]=0;
+    players.forEach(function(player){
 
-}
+        let cell = document.getElementById(
+            "total-" + player.name
+        );
 
-);
+        if(cell){
 
+            cell.innerHTML =
+                totals[player.name];
 
+        }
 
+    });
 
-document
-.querySelectorAll(
-".score-input"
-)
-.forEach(
+    // Write totals back into each player object
+    players.forEach(function(player){
 
-function(input){
+        player.total =
+            totals[player.name] || 0;
 
+    });
 
-let player =
-input.dataset.player;
+    updateHighestScore(totals);
 
+    updateLeader(totals);
 
+    // Display ranking under current leader
+    updateRemainingUnderLeader();
 
-totals[player]
-+=
-Number(input.value)||0;
+    // IMPORTANT:
+    // Removed updateRemainingRankingUI()
+    // because there is no remainingRankingContainer
+    // in the HTML.
 
-
-}
-
-);
-
-
-
-
-
-players.forEach(
-
-function(player){
-
-
-let cell =
-document.getElementById(
-"total-" + player.name
-);
-
-
-
-if(cell){
-
-
-cell.innerHTML =
-totals[player.name];
-
+    saveGame();
 
 }
-
-
-});
-
-// ⭐ Write totals back into each player object
-players.forEach(player => {
-  player.total = totals[player.name] || 0;
-});
-
-updateHighestScore(totals);
-
-updateLeader(totals);
-
-updateRemainingUnderLeader();
-
-updateRemainingRankingUI();
-
-saveGame();
-
-}
-
-
-
-
 
 
 
@@ -3053,6 +3018,9 @@ function applyResult(result){
 
     currentRound = null;
 
+	// Make sure result buttons stay locked
+	setResultButtonsEnabled(false);
+
 
     /* =========================================
        CLEAR ROUND SELECTIONS
@@ -3282,20 +3250,49 @@ function getRemainingRanking() {
 }
 
 function updateRemainingRankingUI() {
-  let ranking = getRemainingRanking();
-  const container = document.getElementById("remainingRankingContainer");
 
-  container.innerHTML = "";
+    let ranking = getRemainingRanking();
 
-  ranking.forEach((player, index) => {
-    container.insertAdjacentHTML("beforeend", `
-      <div class="rank-row">
-        <span class="rank-number">${index + 2}</span>
-        <span class="rank-name">${player.name}</span>
-        <span class="rank-points">${player.total} pts</span>
-      </div>
-    `);
-  });
+    const container =
+        document.getElementById(
+            "remainingRankingContainer"
+        );
+
+    // Container does not exist in current HTML.
+    // Simply exit without causing an error.
+    if(!container){
+        return;
+    }
+
+    container.innerHTML = "";
+
+    ranking.forEach(function(player, index){
+
+        container.insertAdjacentHTML(
+            "beforeend",
+
+            `
+            <div class="rank-row">
+
+                <span class="rank-number">
+                    ${index + 2}
+                </span>
+
+                <span class="rank-name">
+                    ${player.name}
+                </span>
+
+                <span class="rank-points">
+                    ${player.total} pts
+                </span>
+
+            </div>
+            `
+
+        );
+
+    });
+
 }
 
 function updateRemainingUnderLeader() {
