@@ -289,19 +289,29 @@ input{
 }
 
 .partner-card-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 12px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    width: 100%;
+    margin-bottom: 10px;
 }
 
 .partner-card-row select {
-  width: 120px;      /* same width */
-  height: 36px;      /* same height */
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  font-size: 15px;
+    width: 100%;
+    height: 36px;
+    min-height: 36px;
+    padding: 6px 10px;
+
+    border-radius: 8px;
+    border: 1px solid #ccc;
+
+    font-size: 15px;
+    line-height: 24px;
+
+    background: white;
+    color: #222;
+
+    box-sizing: border-box;
 }
 
 
