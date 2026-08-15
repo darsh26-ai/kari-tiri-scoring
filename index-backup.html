@@ -779,6 +779,21 @@ margin-bottom:10px;
   color: black;
 }
 
+/* =========================
+   DISABLED RESULT BUTTON
+========================= */
+
+button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.result-locked {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
 
 </style>
 
@@ -1151,7 +1166,9 @@ let roundCount = 0;
 
 let currentRound = null;
 
-
+/* Prevent Bidder Won/Lost from being used twice */
+let roundLocked = true;
+	
 const playerColors = [
 
 "#3498db",
@@ -1194,35 +1211,39 @@ function(){
         addRound
     );
 
+
 	document
-.getElementById("bidWin")
-.addEventListener(
-"click",
-function(){
-
-if(!prepareCurrentRound())
-return;
-
-
-applyResult("WIN");
-
-
-});
-
-document
-.getElementById("bidLose")
-.addEventListener(
-"click",
-function(){
-
-if(!prepareCurrentRound())
-return;
-
-
-applyResult("LOSE");
-
-
-});
+	.getElementById("bidWin")
+	.addEventListener(
+	"click",
+	function(){
+	
+	    if(roundLocked){
+	
+	        return;
+	
+	    }
+	
+	    applyResult("WIN");
+	
+	});
+	
+	
+	document
+	.getElementById("bidLose")
+	.addEventListener(
+	"click",
+	function(){
+	
+	    if(roundLocked){
+	
+	        return;
+	
+	    }
+	
+	    applyResult("LOSE");
+	
+	});
 
     document
     .querySelector(".reset")
@@ -1234,7 +1255,10 @@ applyResult("LOSE");
 
     createPartnerCardSelectors();
 
-    createPartnerNameSelectors();
+	createPartnerNameSelectors();
+	
+	/* No active round when application starts */
+	setResultButtonsEnabled(false);
 
 
 });
@@ -1811,125 +1835,145 @@ roundCount;
 
 function addRound(){
 
-if(players.length===0){
+    /* Prevent creating a second unfinished round */
+    if(currentRound){
 
-alert("Add players first");
-return;
+        alert(
+            "⚠️ This round is still waiting for a result.\n\n" +
+            "Please select Bidder Won or Bidder Lost first."
+        );
 
-}
-
-
-roundCount++;
-
-
-currentRound = {
-
-number: roundCount,
-
-bidder:"",
-
-bid:0,
-
-partners:[],
-
-result:""
+        return;
+    }
 
 
-};
+    if(players.length === 0){
 
-saveGame();
+        alert("Add players first");
+        return;
 
-
-let tbody =
-document.getElementById(
-"scoreBody"
-);
+    }
 
 
-let row =
-document.createElement("tr");
+    roundCount++;
 
 
-row.dataset.round =
-roundCount;
+    currentRound = {
+
+        number: roundCount,
+
+        bidder: "",
+
+        bid: 0,
+
+        partners: [],
+
+        result: ""
+
+    };
 
 
-
-row.innerHTML =
-
-`
-<td>
-Game ${roundCount}
-</td>
-`;
+    /* Unlock result buttons for this new round */
+    setResultButtonsEnabled(true);
 
 
-
-players.forEach(function(player){
-
-
-row.insertAdjacentHTML(
-
-"beforeend",
-
-`
-
-<td>
-
-<input
-
-type="number"
-
-value="0"
-
-class="score-input"
-
-data-player="${player.name}"
-
-readonly
-
->
-
-</td>
-
-`
-
-);
+    let tbody =
+        document.getElementById("scoreBody");
 
 
-});
+    let row =
+        document.createElement("tr");
 
 
-tbody.appendChild(row);
-
-saveGame();
-
-alert(
-"Round created. Now select bidder, bid points and partners"
-);
+    row.dataset.round =
+        roundCount;
 
 
+    row.innerHTML =
 
-updateStatistics();
+    `
+    <td>
+        Game ${roundCount}
+    </td>
+    `;
 
-// ⭐ Reset partners for new round
+
+    players.forEach(function(player){
+
+        row.insertAdjacentHTML(
+
+            "beforeend",
+
+            `
+            <td>
+
+                <input
+                    type="number"
+                    value="0"
+                    class="score-input"
+                    data-player="${player.name}"
+                    readonly
+                >
+
+            </td>
+            `
+
+        );
+
+    });
+
+
+    tbody.appendChild(row);
+
+
+    /* Reset round selections */
+
     partners = [];
+
     partnerCards = [];
 
-document.getElementById("highestBidder").value = "";
+
+    document.getElementById("highestBidder").value = "";
 
 
-    
+    document.querySelectorAll(".partner-name")
+        .forEach(function(select){
 
-    // ⭐ Clear partner name dropdowns
-    document.querySelectorAll(".partner-name").forEach(sel => sel.value = "");
+            select.value = "";
 
-    // ⭐ Clear partner card dropdowns
-    document.querySelectorAll(".partner-suit").forEach(sel => sel.value = "");
-    document.querySelectorAll(".partner-rank").forEach(sel => sel.value = "");
+        });
+
+
+    document.querySelectorAll(".partner-suit")
+        .forEach(function(select){
+
+            select.value = "";
+
+            select.className = "partner-suit";
+
+        });
+
+
+    document.querySelectorAll(".partner-rank")
+        .forEach(function(select){
+
+            select.value = "";
+
+        });
+
+
+    saveGame();
+
+
+    updateStatistics();
+
+
+    alert(
+        "Round created.\n\n" +
+        "Select the bidder, bid points and partners."
+    );
 
 }
-
 
 
 function attachScoreEvents(){
@@ -2020,95 +2064,60 @@ return true;
 
 function calculateTotals(){
 
+    let totals = {};
 
-let totals = {};
+    players.forEach(function(player){
+        totals[player.name] = 0;
+    });
 
+    document
+    .querySelectorAll(".score-input")
+    .forEach(function(input){
 
+        let player = input.dataset.player;
 
-players.forEach(
+        totals[player] += Number(input.value) || 0;
 
-function(player){
+    });
 
-totals[player.name]=0;
+    players.forEach(function(player){
 
-}
+        let cell = document.getElementById(
+            "total-" + player.name
+        );
 
-);
+        if(cell){
 
+            cell.innerHTML =
+                totals[player.name];
 
+        }
 
+    });
 
-document
-.querySelectorAll(
-".score-input"
-)
-.forEach(
+    // Write totals back into each player object
+    players.forEach(function(player){
 
-function(input){
+        player.total =
+            totals[player.name] || 0;
 
+    });
 
-let player =
-input.dataset.player;
+    updateHighestScore(totals);
 
+    updateLeader(totals);
 
+    // Display ranking under current leader
+    updateRemainingUnderLeader();
 
-totals[player]
-+=
-Number(input.value)||0;
+    // IMPORTANT:
+    // Removed updateRemainingRankingUI()
+    // because there is no remainingRankingContainer
+    // in the HTML.
 
-
-}
-
-);
-
-
-
-
-
-players.forEach(
-
-function(player){
-
-
-let cell =
-document.getElementById(
-"total-" + player.name
-);
-
-
-
-if(cell){
-
-
-cell.innerHTML =
-totals[player.name];
-
+    saveGame();
 
 }
-
-
-});
-
-// ⭐ Write totals back into each player object
-players.forEach(player => {
-  player.total = totals[player.name] || 0;
-});
-
-updateHighestScore(totals);
-
-updateLeader(totals);
-
-updateRemainingUnderLeader();
-
-updateRemainingRankingUI();
-
-saveGame();
-
-}
-
-
-
-
 
 
 
@@ -2778,140 +2787,308 @@ function restoreRounds(){
 
 function applyResult(result){
 
+    /* =========================================
+       SAFETY CHECK
+    ========================================= */
 
-let rows =
-document.querySelectorAll(
-"#scoreBody tr"
-);
+    if(!currentRound){
 
+        alert(
+            "⚠️ No active round.\n\n" +
+            "Click Add Round to start a new round."
+        );
 
-let row =
-rows[rows.length-1];
-
-
-let inputs =
-row.querySelectorAll(
-".score-input"
-);
-
-
-
-inputs.forEach(function(input){
-
-let player = input.dataset.player;
-
-let score = 0;
-
-
-// BIDDER
-if(player === currentRound.bidder){
-
-    if(result === "WIN"){
-
-        score = currentRound.bid * 2;
-
-    }
-    else if(result === "LOSE"){
-
-        score = -currentRound.bid;
-
+        return;
     }
 
-}
 
+    /* =========================================
+       PREVENT DOUBLE RESULT
+    ========================================= */
 
-// PARTNERS
-else if(currentRound.partners.includes(player)){
+    if(roundLocked){
 
-    if(result === "WIN"){
+        alert(
+            "⚠️ This round has already been completed."
+        );
 
-        score = currentRound.bid;
-
-    }
-    else if(result === "LOSE"){
-
-        score = 0;
-
+        return;
     }
 
-}
 
+    /* =========================================
+       FINAL VALIDATION
+    ========================================= */
 
-// NON PARTNERS
-else{
+    if(!prepareCurrentRound()){
 
-    if(result === "LOSE"){
-
-        score = currentRound.bid;
-
-    }
-    else if(result === "WIN"){
-
-        score = 0;
-
+        return;
     }
 
-}
+
+    /* =========================================
+       GET LAST ROUND ROW
+    ========================================= */
+
+    let rows =
+        document.querySelectorAll(
+            "#scoreBody tr"
+        );
 
 
-input.value = score;
+    let row =
+        rows[rows.length - 1];
 
 
-});
+    if(!row){
+
+        alert("Round row not found.");
+
+        return;
+    }
 
 
-
-currentRound.result = result;
-
-
-// Save scores into round history
-let roundData = {
-
-number: currentRound.number,
-
-bidder: currentRound.bidder,
-
-bid: currentRound.bid,
-
-partners: currentRound.partners,
-
-result: currentRound.result,
-
-scores:{}
-
-};
+    let inputs =
+        row.querySelectorAll(
+            ".score-input"
+        );
 
 
+    /* =========================================
+       CALCULATE SCORES
+    ========================================= */
 
-inputs.forEach(function(input){
+    inputs.forEach(function(input){
 
-roundData.scores[input.dataset.player] =
-Number(input.value);
-
-});
-
-
-
-rounds.push(roundData);
+        let player =
+            input.dataset.player;
 
 
-
-saveGame();
-
+        let score = 0;
 
 
-calculateTotals();
+        /* =========================
+           BIDDER
+        ========================= */
+
+        if(player === currentRound.bidder){
+
+            if(result === "WIN"){
+
+                score =
+                    currentRound.bid * 2;
+
+            }
+
+            else if(result === "LOSE"){
+
+                score =
+                    -currentRound.bid;
+
+            }
+
+        }
 
 
+        /* =========================
+           PARTNERS
+        ========================= */
 
-row.cells[0].innerHTML =
-"Game "+
-currentRound.number;
+        else if(
+            currentRound.partners.includes(player)
+        ){
+
+            if(result === "WIN"){
+
+                score =
+                    currentRound.bid;
+
+            }
+
+            else if(result === "LOSE"){
+
+                score = 0;
+
+            }
+
+        }
 
 
+        /* =========================
+           NON-PARTNERS
+        ========================= */
 
-currentRound=null;
+        else{
 
+            if(result === "LOSE"){
+
+                score =
+                    currentRound.bid;
+
+            }
+
+            else if(result === "WIN"){
+
+                score = 0;
+
+            }
+
+        }
+
+
+        input.value = score;
+
+    });
+
+
+    /* =========================================
+       SAVE RESULT
+    ========================================= */
+
+    currentRound.result =
+        result;
+
+
+    let roundData = {
+
+        number:
+            currentRound.number,
+
+        bidder:
+            currentRound.bidder,
+
+        bid:
+            currentRound.bid,
+
+        partners:
+            [...currentRound.partners],
+
+        result:
+            currentRound.result,
+
+        scores:{}
+
+    };
+
+
+    inputs.forEach(function(input){
+
+        roundData.scores[
+            input.dataset.player
+        ] =
+            Number(input.value);
+
+    });
+
+
+    rounds.push(roundData);
+
+
+    /* =========================================
+       IMPORTANT:
+       LOCK THIS ROUND
+    ========================================= */
+
+    setResultButtonsEnabled(false);
+
+
+    /* =========================================
+       UPDATE UI
+    ========================================= */
+
+    calculateTotals();
+
+
+    row.cells[0].innerHTML =
+
+        `
+        Game ${currentRound.number}
+        <br>
+        <small>
+            ${result === "WIN"
+                ? "🏆 Bidder Won"
+                : "❌ Bidder Lost"}
+        </small>
+        `;
+
+
+    /* =========================================
+       CLEAR CURRENT ROUND
+       ========================================= */
+
+    currentRound = null;
+
+	// Make sure result buttons stay locked
+	setResultButtonsEnabled(false);
+
+
+    /* =========================================
+       CLEAR ROUND SELECTIONS
+       ========================================= */
+
+    document.getElementById(
+        "highestBidder"
+    ).value = "";
+
+
+    partners = [];
+
+    partnerCards = [];
+
+
+    document.querySelectorAll(
+        ".partner-name"
+    ).forEach(function(select){
+
+        select.value = "";
+
+    });
+
+
+    document.querySelectorAll(
+        ".partner-suit"
+    ).forEach(function(select){
+
+        select.value = "";
+
+        select.className =
+            "partner-suit";
+
+    });
+
+
+    document.querySelectorAll(
+        ".partner-rank"
+    ).forEach(function(select){
+
+        select.value = "";
+
+    });
+
+
+    /* =========================================
+       SAVE FINAL STATE
+    ========================================= */
+
+    saveGame();
+
+
+    updateStatistics();
+
+
+    /* =========================================
+       CONFIRMATION
+    ========================================= */
+
+    alert(
+
+        result === "WIN"
+
+        ? "🏆 Bidder Won!\n\nRound has been completed and locked."
+
+        : "❌ Bidder Lost!\n\nRound has been completed and locked."
+
+    );
 
 }
 
@@ -2978,7 +3155,25 @@ function resetGame(){
 
 }
 
+/********************************************
+ ROUND RESULT BUTTON CONTROL
+********************************************/
 
+function setResultButtonsEnabled(enabled) {
+
+    const winButton = document.getElementById("bidWin");
+    const loseButton = document.getElementById("bidLose");
+
+    if (winButton) {
+        winButton.disabled = !enabled;
+    }
+
+    if (loseButton) {
+        loseButton.disabled = !enabled;
+    }
+
+    roundLocked = !enabled;
+}
 
 
 /********************************************
@@ -3055,20 +3250,49 @@ function getRemainingRanking() {
 }
 
 function updateRemainingRankingUI() {
-  let ranking = getRemainingRanking();
-  const container = document.getElementById("remainingRankingContainer");
 
-  container.innerHTML = "";
+    let ranking = getRemainingRanking();
 
-  ranking.forEach((player, index) => {
-    container.insertAdjacentHTML("beforeend", `
-      <div class="rank-row">
-        <span class="rank-number">${index + 2}</span>
-        <span class="rank-name">${player.name}</span>
-        <span class="rank-points">${player.total} pts</span>
-      </div>
-    `);
-  });
+    const container =
+        document.getElementById(
+            "remainingRankingContainer"
+        );
+
+    // Container does not exist in current HTML.
+    // Simply exit without causing an error.
+    if(!container){
+        return;
+    }
+
+    container.innerHTML = "";
+
+    ranking.forEach(function(player, index){
+
+        container.insertAdjacentHTML(
+            "beforeend",
+
+            `
+            <div class="rank-row">
+
+                <span class="rank-number">
+                    ${index + 2}
+                </span>
+
+                <span class="rank-name">
+                    ${player.name}
+                </span>
+
+                <span class="rank-points">
+                    ${player.total} pts
+                </span>
+
+            </div>
+            `
+
+        );
+
+    });
+
 }
 
 function updateRemainingUnderLeader() {
