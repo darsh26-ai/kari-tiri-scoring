@@ -795,20 +795,6 @@ button:disabled {
     cursor: not-allowed;
 }
 
-/* Disabled game selections */
-
-select:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-    background: #d9d9d9;
-    color: #777;
-}
-
-.round-selection-locked {
-    opacity: 0.45;
-    pointer-events: none;
-}
-
 </style>
 
 </head>
@@ -1274,9 +1260,6 @@ function(){
 	/* No active round when application starts */
 	setResultButtonsEnabled(false);
 
-	/* Lock all round selections */
-	setRoundInputsEnabled(false);
-
 
 });
 
@@ -1289,12 +1272,10 @@ document.getElementById("undoRound").addEventListener("click", undoLastRound);
 function undoLastRound() {
 
     // Ask for password
-    const password = prompt(
-        "Enter password to undo last round:"
-    );
+    const password = prompt("Enter password to undo last round:");
 
     if (password === null) {
-        return;
+        return; // user pressed cancel
     }
 
     if (password !== "Innocent mistake") {
@@ -1307,127 +1288,28 @@ function undoLastRound() {
         return;
     }
 
-    // Remove the last completed round
+    // Remove last completed round
     const removed = rounds.pop();
 
-    // IMPORTANT:
-    // The next round should reuse the removed game number
+    // Fix round counter
     roundCount = rounds.length;
 
-    // Restore the removed round as the active round
-    currentRound = {
-        number: removed.number,
-        bidder: removed.bidder || "",
-        bid: removed.bid || 275,
-        partners: removed.partners || [],
-        result: ""
-    };
+    // Remove last row from UI
+    const tbody = document.getElementById("scoreBody");
+    if (tbody.lastElementChild) {
+        tbody.removeChild(tbody.lastElementChild);
+    }
 
-    // Rebuild the score table
-    restoreRounds();
-
-    // Add the undone round back as an editable row
-    const tbody =
-        document.getElementById("scoreBody");
-
-    const row =
-        document.createElement("tr");
-
-    row.dataset.round =
-        currentRound.number;
-
-    row.innerHTML = `
-        <td>
-            Game ${currentRound.number}
-        </td>
-    `;
-
-    players.forEach(function(player){
-
-        row.insertAdjacentHTML(
-            "beforeend",
-
-            `
-            <td>
-                <input
-                    type="number"
-                    class="score-input"
-                    value="0"
-                    data-player="${player.name}"
-                    readonly
-                >
-            </td>
-            `
-        );
-
-    });
-
-    tbody.appendChild(row);
-
-
-    // Restore bidder
-    document.getElementById(
-        "highestBidder"
-    ).value =
-        currentRound.bidder;
-
-
-    // Restore bid
-    document.getElementById(
-        "bidPoints"
-    ).value =
-        currentRound.bid;
-
-
-    // Restore partners
-    document.querySelectorAll(
-        ".partner-name"
-    ).forEach(function(select){
-
-        select.value = "";
-
-    });
-
-    (currentRound.partners || []).forEach(
-        function(partner, index){
-
-            const select =
-                document.querySelectorAll(
-                    ".partner-name"
-                )[index];
-
-            if(select){
-                select.value = partner;
-            }
-
-        }
-    );
-
-
-    // Enable round selections again
-    setRoundInputsEnabled(true);
-
-    // Enable Win / Loss
-    setResultButtonsEnabled(true);
-
-
-    // Update totals
+    // Recalculate totals
     calculateTotals();
 
-    // Update statistics
-    updateStatistics();
-
-    // Save state
+    // Save updated game state
     saveGame();
 
-
-    alert(
-        "↩️ Game " +
-        removed.number +
-        " has been undone.\n\n" +
-        "You can enter the result again."
-    );
+    alert("Last round undone: Game " + removed.number);
 }
+
+
 
 
 /********************************************
@@ -1973,7 +1855,7 @@ function addRound(){
     }
 
 
-    roundCount = rounds.length + 1;
+    roundCount++;
 
 
     currentRound = {
@@ -1994,8 +1876,6 @@ function addRound(){
     /* Unlock result buttons for this new round */
     setResultButtonsEnabled(true);
 
-	// Enable all round selections
-	setRoundInputsEnabled(true);
 
     let tbody =
         document.getElementById("scoreBody");
@@ -3120,8 +3000,16 @@ function applyResult(result){
 
 
     row.cells[0].innerHTML =
-    result === "WIN" ? "🏆" : "❌";
-    `;
+
+        `
+        Game ${currentRound.number}
+        <br>
+        <small>
+            ${result === "WIN"
+                ? "🏆 Bidder Won"
+                : "❌ Bidder Lost"}
+        </small>
+        `;
 
 
     /* =========================================
@@ -3133,8 +3021,6 @@ function applyResult(result){
 	// Make sure result buttons stay locked
 	setResultButtonsEnabled(false);
 
-	// Lock all selections after round is completed
-	setRoundInputsEnabled(false);
 
     /* =========================================
        CLEAR ROUND SELECTIONS
@@ -3267,8 +3153,6 @@ function resetGame(){
 
     alert("✅ Game has been reset successfully.");
 
-	setRoundInputsEnabled(false);
-	setResultButtonsEnabled(false);
 }
 
 /********************************************
@@ -3428,80 +3312,7 @@ function updateRemainingUnderLeader() {
   });
 }
 
-function setRoundInputsEnabled(enabled) {
 
-    // Highest bidder
-    const highestBidder =
-        document.getElementById("highestBidder");
-
-    // Bid points
-    const bidPoints =
-        document.getElementById("bidPoints");
-
-    // Wild card
-    const wildSuit =
-        document.getElementById("wildSuit");
-
-    // Partner names
-    const partnerNames =
-        document.querySelectorAll(".partner-name");
-
-    // Partner card selections
-    const partnerPositions =
-        document.querySelectorAll(".card-position");
-
-    const partnerSuits =
-        document.querySelectorAll(".partner-suit");
-
-    const partnerRanks =
-        document.querySelectorAll(".partner-rank");
-
-
-    // Enable / disable main selections
-
-    if (highestBidder) {
-        highestBidder.disabled = !enabled;
-    }
-
-    if (bidPoints) {
-        bidPoints.disabled = !enabled;
-    }
-
-    if (wildSuit) {
-        wildSuit.disabled = !enabled;
-    }
-
-
-    // Enable / disable partner names
-
-    partnerNames.forEach(function(select) {
-
-        select.disabled = !enabled;
-
-    });
-
-
-    // Enable / disable partner cards
-
-    partnerPositions.forEach(function(select) {
-
-        select.disabled = !enabled;
-
-    });
-
-    partnerSuits.forEach(function(select) {
-
-        select.disabled = !enabled;
-
-    });
-
-    partnerRanks.forEach(function(select) {
-
-        select.disabled = !enabled;
-
-    });
-
-}
 
 /********************************************
  FINAL START
